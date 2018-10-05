@@ -88,6 +88,7 @@ const typeDefs = gql`
     python_state: String
     query_runs: [QueryRun],
 
+    report: Report,
     _links: JSON,
     _embedded: JSON
   }
@@ -213,6 +214,7 @@ const typeDefs = gql`
     account(name: String): Account,
     datasources: [DataSource]!
     report(username: String, token: ID): Report
+    report_run(username: String, reportToken: String, runToken: String): ReportRun
   }
 `;
 
@@ -230,22 +232,38 @@ interface ModeResource {
   };
 }
 
-interface Account extends ModeResource {
-  name: string;
-  token: string;
-  id: number;
-  user: boolean;
-  username: string;
-  plan_code: string;
-  avatar: any;
-}
-
 const resolvers = {
   JSON: GraphQLJSON,
   Query: {
     account: getAccount,
-    report: getReport
+    report: getReport,
+    report_run: getReportRun,
   },
+  Account: {
+    preference: getEmbedValueResolver,
+    data_sources: getEmbedValueResolver,
+    all_color_palettes: getEmbedValueResolver
+  },
+  Report: {
+    report_theme: getEmbedValueResolver,
+    queries: getEmbedValueResolver,
+    owner: getEmbedValueResolver,
+    last_run: getReportRunResolver
+  },
+  ReportRun: {
+    report: getEmbedValueResolver,
+    query_runs: getEmbedValueResolver
+  },
+  QueryRun: {
+    result: getEmbedValueResolver
+  },
+  ReportQuery: {
+    charts: getEmbedValueResolver,
+    query_tables: getEmbedValueResolver
+  },
+  Chart: {
+    color_palette: getEmbedValueResolver
+  }
 };
 
 function get(url: string) {
@@ -258,10 +276,54 @@ function get(url: string) {
   })
 }
 
+async function getReportRun(_parent: any, args: any, _context: any, info: GraphQLResolveInfo) {
+  const set = info.fieldNodes[0].selectionSet;
+  let embeds: string[] = [];
+
+  embeds.push('embed[executed_by]:');
+  embeds.push('embed[new_pdf_export]:');
+  embeds.push('embed[new_report_run_email]:');
+  embeds.push('embed[new_report_run_slack_message]:');
+  embeds.push('embed[pdf_export]:');
+  embeds.push('embed[python_cell_runs][python_cell_runs][python_cell_run_results]:');
+
+  if (set != null) {
+    const fields = set.selections.filter(s => s.kind === 'Field') as FieldNode[];
+    for (const field of fields) {
+      switch (field.name.value) {
+        case 'report':
+          embeds.push('embed[report][new_embed_key]');
+          embeds.push('embed[report][new_report_schedule]');
+          embeds.push('embed[report][new_report_subscription]');
+          embeds.push('embed[report][new_star]');
+          embeds.push('embed[report][python_visualizations][python_visualizations][python_cell]');
+          embeds.push('embed[report][python_visualizations][python_visualizations][python_cell_run][python_cell_run_results]');
+          embeds.push('embed[report][queries][queries][charts][charts][color_palette]');
+          embeds.push('embed[report][queries][queries][query_tables]');
+          embeds.push('embed[report][report_filters]');
+          embeds.push('embed[report][report_theme]');
+          embeds.push('embed[report][space]');
+          break;
+      }
+    }
+  }
+
+  let url = `/api/${args.username}/reports/${args.reportToken}/runs/${args.runToken}?trk_source=editor`;
+  for (let embed of embeds) {
+    url += `&${embed}=1`
+  }
+
+  const startTime = performance.now();
+  const response = await get(url);
+  const val = await response.json();
+  console.log(url, performance.now() - startTime);
+
+  return val;
+}
+
 async function getReport(_parent: any, args: any, _context: any, info: GraphQLResolveInfo) {
   const set = info.fieldNodes[0].selectionSet;
   let embeds: string[] = [];
-  let getLastRun = false;
 
   if (set != null) {
     const fields = set.selections.filter(s => s.kind === 'Field') as FieldNode[];
@@ -281,9 +343,6 @@ async function getReport(_parent: any, args: any, _context: any, info: GraphQLRe
           embeds.push('embed[python_visualizations][python_visualizations][python_cell]');
           embeds.push('embed[python_visualizations][python_visualizations][python_cell_run][python_cell_run_results]');
           break;
-        case 'last_run':
-          getLastRun = true;
-          break;
         case 'space':
           embeds.push('embed[space]');
           break;
@@ -300,58 +359,7 @@ async function getReport(_parent: any, args: any, _context: any, info: GraphQLRe
   const response = await get(url);
   const val = await response.json();
   console.log(url, performance.now() - startTime);
-
-  let retVal = {
-    ...val,
-    report_theme: getEmbedValue(val, 'report_theme'),
-    queries: getEmbedArray(val, 'queries').map(q => {
-      let charts = getEmbedArray(q, 'charts');
-      let tables = getEmbedArray(q, 'query_tables');
-
-      return {
-        ...q,
-        charts: charts.map(c => {
-          let palette = getEmbedValue(c, 'color_palette');
-          return {
-            ...c,
-            color_palette: palette
-          }
-        }),
-        tables
-      }
-    })
-  };
-
-  if (getLastRun) {
-    let runUrl = `${val._links['last_run'].href}?embed[query_runs][result]=1`
-    const startTime = performance.now();
-    const runResponse = await get(runUrl);
-    const runVal = await runResponse.json();
-    console.log(runUrl, performance.now() - startTime);
-    retVal = {
-      ...retVal,
-      last_run: {
-        ...runVal,
-        query_runs: getEmbedArray(runVal, 'query_runs').map(qr => {
-          const result = getEmbedValue(qr, 'result');
-          return {
-            ...qr,
-            ...result != null ? {
-              result: {
-                ...result,
-                csv_href: result._links['csv'].href,
-                json_href: result._links['json'].href
-              }
-            } : {}
-          };
-        })
-      }
-    };
-  }
-
-  console.timeEnd("Get Report");
-
-  return retVal;
+  return val;
 }
 
 async function getAccount(_parent: any, args: any, _context: any, info: GraphQLResolveInfo) {
@@ -383,14 +391,35 @@ async function getAccount(_parent: any, args: any, _context: any, info: GraphQLR
 
   console.log(url);
   let response = await get(url);
-  let val = await response.json() as Account;
+  let val = await response.json();
   console.timeEnd("Get Account");
-  return {
-    ...val,
-    data_sources: getEmbedArray(val, 'data_sources'),
-    all_color_palettes: getEmbedArray(val, 'all_color_palettes'),
-    preference: getEmbedValue(val, 'preference')
-  };
+  return val;
+}
+
+async function getReportRunResolver(parent: ModeResource, _args: any, _context: any, info: GraphQLResolveInfo) {
+  let runUrl = `${parent._links[info.fieldName].href}?embed[query_runs][result]=1`;
+  const runResponse = await get(runUrl);
+  const runVal = await runResponse.json();
+
+  return runVal;
+}
+
+function getEmbedValueResolver(parent: ModeResource, _args: any, _context: any, info: GraphQLResolveInfo) {
+  const val = getEmbed(parent, info.fieldName);
+
+  // TODO: do stuff
+  return val;
+}
+
+function getEmbed(resource: ModeResource, name: string) {
+  if (resource._embedded && resource._embedded[name]) {
+    const embed = resource._embedded[name]._embedded;
+    if (embed != null && embed[name] != null) {
+      return getEmbedArray(resource, name);
+    } else {
+      return getEmbedValue(resource, name);
+    }
+  }
 }
 
 function getEmbedValue(resource: ModeResource, name: string) {
