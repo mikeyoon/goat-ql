@@ -340,7 +340,8 @@ async function StartServer() {
   const server = new ApolloServer({ typeDefs, resolvers });
 
   const app = new Hapi.Server({
-    port: 4000
+    port: 4000,
+    routes: { cors: true }
   });
 
   await server.applyMiddleware({
