@@ -1,10 +1,12 @@
 import * as Hapi from "hapi";
 import { ApolloServer, gql } from 'apollo-server-hapi';
 
+import { performance } from 'perf_hooks';
+
 import fetch from 'node-fetch';
 import { GraphQLResolveInfo, FieldNode } from "graphql";
 
-const AUTH = `Basic ${process.env.MODE_TOKEN}`;
+const AUTH = `${process.env.MODE_TOKEN}`;
 
 // Construct a schema, using GraphQL schema language
 const typeDefs = gql`
@@ -180,7 +182,9 @@ const resolvers = {
 function get(url: string) {
   return fetch('https://staging.modeanalytics.com' + url, {
     headers: {
-      "Authorization": AUTH
+      // "Authorization": AUTH,
+      // "accept-encoding": "gzip, deflate, br",
+      "Cookie": AUTH
     }
   })
 }
@@ -189,7 +193,6 @@ async function getReport(_parent: any, args: any, _context: any, info: GraphQLRe
   const set = info.fieldNodes[0].selectionSet;
   let embeds: string[] = [];
   let getLastRun = false;
-  console.time("Get Report");
 
   if (set != null) {
     const fields = set.selections.filter(s => s.kind === 'Field') as FieldNode[];
@@ -224,8 +227,10 @@ async function getReport(_parent: any, args: any, _context: any, info: GraphQLRe
     url += `&${embed}=1`
   }
 
+  const startTime = performance.now();
   const response = await get(url);
   const val = await response.json();
+  console.log(url, performance.now() - startTime);
 
   let retVal = {
     ...val,
@@ -255,8 +260,10 @@ async function getReport(_parent: any, args: any, _context: any, info: GraphQLRe
 
   if (getLastRun) {
     let runUrl = `${val._links['last_run'].href}?embed[query_runs][result]=1`
+    const startTime = performance.now();
     const runResponse = await get(runUrl);
     const runVal = await runResponse.json();
+    console.log(runUrl, performance.now() - startTime);
     retVal = {
       ...retVal,
       last_run: {
