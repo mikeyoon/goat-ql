@@ -16,7 +16,6 @@ const typeDefs = gql`
   scalar JSON
 
   interface Model {
-    id: Int,
     token: ID,
     _links: JSON,
     _embedded: JSON
@@ -52,6 +51,7 @@ const typeDefs = gql`
     data_sources: [DataSource],
     all_color_palettes: [ColorPalette],
     preference: Preference,
+    spaces: [Space],
 
     _links: JSON,
     _embedded: JSON
@@ -83,7 +83,6 @@ const typeDefs = gql`
   }
 
   type ReportRun implements Model {
-    id: Int,
     token: ID,
     created_at: String,
     updated_at: String,
@@ -100,7 +99,6 @@ const typeDefs = gql`
   }
 
   type QueryRun implements Model {
-    id: Int,
     token: ID,
     created_at: String,
     state: String,
@@ -239,6 +237,20 @@ const typeDefs = gql`
     _embedded: JSON
   }
 
+  type Space implements Model {
+    id: Int,
+    token: ID,
+    description: String,
+    free_default: Boolean,
+    name: String,
+    restricted: Boolean,
+    space_type: String,
+    state: String,
+
+    _links: JSON,
+    _embedded: JSON
+  }
+
   type Query {
     account(name: String): Account,
     datasources: [DataSource]!
@@ -271,7 +283,8 @@ const resolvers = {
   Account: {
     preference: getEmbedValueResolver,
     data_sources: getEmbedValueResolver,
-    all_color_palettes: getEmbedValueResolver
+    all_color_palettes: getEmbedValueResolver,
+    spaces: getEmbedValueResolver,
   },
   Report: {
     report_theme: getEmbedValueResolver,
@@ -309,6 +322,8 @@ function get(url: string) {
 async function getReportRun(_parent: any, args: any, _context: any, info: GraphQLResolveInfo) {
   const set = info.fieldNodes[0].selectionSet;
   let embeds: string[] = [];
+  console.log('Get Report Run Begin');
+  const startTime = performance.now();
 
   embeds.push('embed[executed_by]:');
   embeds.push('embed[new_pdf_export]:');
@@ -346,15 +361,16 @@ async function getReportRun(_parent: any, args: any, _context: any, info: GraphQ
     url += `&${embed}=1`
   }
 
-  const startTime = performance.now();
   const response = await get(url);
   const val = await response.json();
-  console.log(url, performance.now() - startTime);
+  console.log("Get Report Run", performance.now() - startTime);
 
   return val;
 }
 
 async function getReport(_parent: any, args: any, _context: any, info: GraphQLResolveInfo) {
+  const startTime = performance.now();
+  console.log('Get Report Begin');
   const set = info.fieldNodes[0].selectionSet;
   let embeds: string[] = [];
 
@@ -391,15 +407,16 @@ async function getReport(_parent: any, args: any, _context: any, info: GraphQLRe
     url += `&${embed}=1`
   }
 
-  const startTime = performance.now();
+
   const response = await get(url);
   const val = await response.json();
-  console.log(url, performance.now() - startTime);
+  console.log("Get Report", performance.now() - startTime);
   return val;
 }
 
 async function getAccount(_parent: any, args: any, _context: any, info: GraphQLResolveInfo) {
-  console.time("Get Account");
+  console.log("Get Account Begin");
+  const startTime = performance.now();
   const set = info.fieldNodes[0].selectionSet;
   let embeds: string[] = [];
 
@@ -416,6 +433,9 @@ async function getAccount(_parent: any, args: any, _context: any, info: GraphQLR
         case 'all_color_palettes':
           embeds.push('embed[all_color_palettes]');
           break;
+        case 'spaces':
+          embeds.push('embed[spaces]');
+          break;
       }
     }
   }
@@ -425,10 +445,9 @@ async function getAccount(_parent: any, args: any, _context: any, info: GraphQLR
     url += `&${embed}=1`
   }
 
-  console.log(url);
   let response = await get(url);
   let val = await response.json();
-  console.timeEnd("Get Account");
+  console.log("Get Account", performance.now() - startTime);
   return val;
 }
 
