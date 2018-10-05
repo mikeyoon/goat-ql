@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { ApolloServer, gql } from 'apollo-server-express';
+import GraphQLJSON from 'graphql-type-json';
 
 import { performance } from 'perf_hooks';
 
@@ -11,6 +12,8 @@ const AUTH = `${process.env.MODE_TOKEN}`;
 
 // Construct a schema, using GraphQL schema language
 const typeDefs = gql`
+  scalar JSON
+
   interface Model {
     id: Int,
     token: ID
@@ -23,6 +26,17 @@ const typeDefs = gql`
     type: String
   }
 
+  type Preference {
+    default_account: Int,
+    editor_theme: String,
+    editor_browser_enabled: Boolean,
+    features: JSON,
+    hidden_banners: JSON,
+    home_list_type: String,
+    home_view: String,
+    notebook_sidebar: JSON
+  }
+
   type Account implements Model {
     id: Int,
     token: ID,
@@ -32,7 +46,9 @@ const typeDefs = gql`
     plan_code: String,
 
     avatar: Avatar,
-    data_sources: [DataSource]
+    data_sources: [DataSource],
+    all_color_palettes: [ColorPalette],
+    preference: Preference
   }
 
   type DataSource implements Model {
@@ -108,8 +124,8 @@ const typeDefs = gql`
     id: Int,
     token: ID,
     color_palette_token: ID,
-    view: String,
-    view_vegas: String,
+    view: JSON,
+    view_vegas: JSON,
     view_version: Int,
 
     color_palette: ColorPalette
@@ -118,7 +134,7 @@ const typeDefs = gql`
   type Table implements Model {
     id: Int,
     token: ID,
-    view: String
+    view: JSON
   }
 
   type Report implements Model {
@@ -185,6 +201,7 @@ interface Account extends ModeResource {
 }
 
 const resolvers = {
+  JSON: GraphQLJSON,
   Query: {
     account: getAccount,
     report: getReport
@@ -257,15 +274,10 @@ async function getReport(_parent: any, args: any, _context: any, info: GraphQLRe
           let palette = getEmbedValue(c, 'color_palette');
           return {
             ...c,
-            view: JSON.stringify(c.view),
-            view_vegas: JSON.stringify(c.view_vegas),
             color_palette: palette
           }
         }),
-        tables: tables.map(t => ({
-          ...t,
-          view: JSON.stringify(t.view)
-        }))
+        tables
       }
     })
   };
@@ -305,21 +317,34 @@ async function getReport(_parent: any, args: any, _context: any, info: GraphQLRe
 async function getAccount(_parent: any, args: any, _context: any, info: GraphQLResolveInfo) {
   console.time("Get Account");
   const set = info.fieldNodes[0].selectionSet;
-  let includesDatasources = false;
+  let embeds: string[] = [];
+
   if (set != null) {
     const fields = set.selections.filter(s => s.kind === 'Field') as FieldNode[];
-    if (fields.some(f => f.name.value === 'data_sources')) {
-      includesDatasources = true;
+    for (let field of fields) {
+      switch (field.name.value) {
+        case 'data_sources':
+          embeds.push('embed[data_sources][data_sources]');
+          break;
+        case 'preference':
+          embeds.push('embed[preference]');
+          break;
+        case 'all_color_palettes':
+          embeds.push('embed[all_color_palettes]');
+          break;
+      }
     }
   }
 
-  let url = '/api/' + args.name;
-  if (includesDatasources) {
-    url += '?embed[data_sources][data_sources]=1';
+  let url = '/api/' + args.name + "?trk_source=report";
+  for (let embed of embeds) {
+    url += `&${embed}=1`
   }
 
+  console.log(url);
   let response = await get(url);
   let val = await response.json() as Account;
+  console.log(val._embedded);
 
   console.timeEnd("Get Account");
   return {
@@ -330,7 +355,10 @@ async function getAccount(_parent: any, args: any, _context: any, info: GraphQLR
     username: val.username,
     plan_code: val.plan_code,
     avatar: val.avatar,
-    data_sources: getEmbedArray(val, 'data_sources')
+
+    data_sources: getEmbedArray(val, 'data_sources'),
+    all_color_palettes: getEmbedArray(val, 'all_color_palettes'),
+    preference: getEmbedValue(val, 'preference')
   };
 }
 
@@ -359,35 +387,3 @@ server.applyMiddleware({ app });
 app.listen({ port: 4000 }, () =>
   console.log(`🚀 Server ready at http://localhost:4000${server.graphqlPath}`),
 );
-
-// async function StartServer() {
-//   const server = new ApolloServer({ typeDefs, resolvers });
-
-//   const app = new Hapi.Server({
-//     port: 4000,
-//     routes: {
-//       cors: {
-//         origin: ['*']
-//       }
-//     }
-//   });
-
-//   await server.applyMiddleware({
-//     app,
-//   });
-
-//   await server.installSubscriptionHandlers(app.listener);
-
-//   app.route({
-//     method: 'OPTIONS',
-//     path: '/graphql',
-//     handler: (_request, reply) => {
-//       reply.response({ ok: true })
-//         .header('Access-Control-Allow-Methods', 'POST')
-//     }
-//   })
-
-//   await app.start();
-// }
-
-// StartServer().catch(error => console.log(error));
