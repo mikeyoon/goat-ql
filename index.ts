@@ -189,6 +189,7 @@ async function getReport(_parent: any, args: any, _context: any, info: GraphQLRe
   const set = info.fieldNodes[0].selectionSet;
   let embeds: string[] = [];
   let getLastRun = false;
+  console.time("Get Report");
 
   if (set != null) {
     const fields = set.selections.filter(s => s.kind === 'Field') as FieldNode[];
@@ -277,10 +278,13 @@ async function getReport(_parent: any, args: any, _context: any, info: GraphQLRe
     };
   }
 
+  console.timeEnd("Get Report");
+
   return retVal;
 }
 
 async function getAccount(_parent: any, args: any, _context: any, info: GraphQLResolveInfo) {
+  console.time("Get Account");
   const set = info.fieldNodes[0].selectionSet;
   let includesDatasources = false;
   if (set != null) {
@@ -297,6 +301,8 @@ async function getAccount(_parent: any, args: any, _context: any, info: GraphQLR
 
   let response = await get(url);
   let val = await response.json() as Account;
+
+  console.timeEnd("Get Account");
   return {
     name: val.name,
     token: val.token,
