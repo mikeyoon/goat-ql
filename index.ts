@@ -304,6 +304,9 @@ async function getReportRun(_parent: any, args: any, _context: any, info: GraphQ
           embeds.push('embed[report][report_theme]');
           embeds.push('embed[report][space]');
           break;
+        case 'query_runs':
+          embeds.push('embed[query_runs][result]');
+          break;
       }
     }
   }
