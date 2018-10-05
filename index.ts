@@ -9,6 +9,7 @@ import fetch from 'node-fetch';
 import { GraphQLResolveInfo, FieldNode } from "graphql";
 
 const AUTH = `${process.env.MODE_TOKEN}`;
+const API_URL = `${process.env.MODE_URL}`;
 
 // Construct a schema, using GraphQL schema language
 const typeDefs = gql`
@@ -85,8 +86,13 @@ const typeDefs = gql`
     id: Int,
     token: ID,
     created_at: String,
+    updated_at: String,
+    completed_at: String,
     python_state: String
     query_runs: [QueryRun],
+    form_fields: JSON,
+    parameters: JSON,
+    state: String,
 
     report: Report,
     _links: JSON,
@@ -102,6 +108,7 @@ const typeDefs = gql`
     rendered_source: String,
     data_source_id: Int,
     limit: Boolean,
+    query_token: String,
 
     result: QueryRunResult,
     _links: JSON,
@@ -290,7 +297,7 @@ const resolvers = {
 };
 
 function get(url: string) {
-  return fetch('https://staging.modeanalytics.com' + url, {
+  return fetch(API_URL + url, {
     headers: {
       // "Authorization": AUTH,
       // "accept-encoding": "gzip, deflate, br",
