@@ -16,13 +16,22 @@ const typeDefs = gql`
     token: ID
   }
 
+  type Avatar {
+    initials: String,
+    color_class: String,
+    seed: String,
+    type: String
+  }
+
   type Account implements Model {
     id: Int,
     token: ID,
     name: String,
     user: Boolean,
     username: String,
+    plan_code: String,
 
+    avatar: Avatar,
     data_sources: [DataSource]
   }
 
@@ -171,6 +180,8 @@ interface Account extends ModeResource {
   id: number;
   user: boolean;
   username: string;
+  plan_code: string;
+  avatar: any;
 }
 
 const resolvers = {
@@ -316,6 +327,9 @@ async function getAccount(_parent: any, args: any, _context: any, info: GraphQLR
     token: val.token,
     id: val.id,
     user: val.user,
+    username: val.username,
+    plan_code: val.plan_code,
+    avatar: val.avatar,
     data_sources: getEmbedArray(val, 'data_sources')
   };
 }
