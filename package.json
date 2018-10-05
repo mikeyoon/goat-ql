@@ -1,0 +1,25 @@
+{
+  "name": "goat-ql",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "tsc": "tsc --noEmit"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "apollo-server-hapi": "^2.1.0",
+    "graphql": "^14.0.2",
+    "hapi": "^17.6.0",
+    "node-fetch": "^2.2.0"
+  },
+  "devDependencies": {
+    "@types/graphql": "^14.0.1",
+    "@types/hapi": "^17.6.1",
+    "@types/node-fetch": "^2.1.2",
+    "ts-node": "^7.0.1",
+    "typescript": "^3.1.1"
+  }
+}
