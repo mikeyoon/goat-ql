@@ -16,7 +16,9 @@ const typeDefs = gql`
 
   interface Model {
     id: Int,
-    token: ID
+    token: ID,
+    _links: JSON,
+    _embedded: JSON
   }
 
   type Avatar {
@@ -48,7 +50,10 @@ const typeDefs = gql`
     avatar: Avatar,
     data_sources: [DataSource],
     all_color_palettes: [ColorPalette],
-    preference: Preference
+    preference: Preference,
+
+    _links: JSON,
+    _embedded: JSON
   }
 
   type DataSource implements Model {
@@ -58,7 +63,10 @@ const typeDefs = gql`
     default: Boolean,
     name: String,
     public: Boolean,
-    queryable: Boolean
+    queryable: Boolean,
+
+    _links: JSON,
+    _embedded: JSON
   }
 
   type ReportTheme implements Model {
@@ -67,7 +75,10 @@ const typeDefs = gql`
     css_href: String,
     css_source: String,
     name: String,
-    type: String
+    type: String,
+
+    _links: JSON,
+    _embedded: JSON
   }
 
   type ReportRun implements Model {
@@ -76,6 +87,9 @@ const typeDefs = gql`
     created_at: String,
     python_state: String
     query_runs: [QueryRun],
+
+    _links: JSON,
+    _embedded: JSON
   }
 
   type QueryRun implements Model {
@@ -88,17 +102,22 @@ const typeDefs = gql`
     data_source_id: Int,
     limit: Boolean,
 
-    result: QueryRunResult
+    result: QueryRunResult,
+    _links: JSON,
+    _embedded: JSON
   }
 
-  type QueryRunResult {
+  type QueryRunResult implements Model {
     id: Int,
     token: ID,
     content_length: Int,
     count: Int,
     state: String,
     csv_href: String,
-    json_href: String
+    json_href: String,
+
+    _links: JSON,
+    _embedded: JSON
   }
 
   type ReportQuery implements Model {
@@ -109,15 +128,21 @@ const typeDefs = gql`
     data_source_id: Int,
 
     charts: [Chart],
-    query_tables: [Table]
+    query_tables: [Table],
+
+    _links: JSON,
+    _embedded: JSON
   }
 
-  type ColorPalette {
+  type ColorPalette implements Model {
     id: Int,
     token: ID,
     name: String,
     palette_type: String,
-    value: String
+    value: String,
+
+    _links: JSON,
+    _embedded: JSON
   }
 
   type Chart implements Model {
@@ -128,13 +153,19 @@ const typeDefs = gql`
     view_vegas: JSON,
     view_version: Int,
 
-    color_palette: ColorPalette
+    color_palette: ColorPalette,
+
+    _links: JSON,
+    _embedded: JSON
   }
 
   type Table implements Model {
     id: Int,
     token: ID,
-    view: JSON
+    view: JSON,
+
+    _links: JSON,
+    _embedded: JSON
   }
 
   type Report implements Model {
@@ -156,17 +187,26 @@ const typeDefs = gql`
     python_notebook: Notebook,
     python_visualizations: [NotebookVisualization],
     last_run: ReportRun,
-    owner: Account
+    owner: Account,
+
+    _links: JSON,
+    _embedded: JSON
   }
 
   type Notebook implements Model {
     id: Int,
-    token: ID
+    token: ID,
+
+    _links: JSON,
+    _embedded: JSON
   }
 
   type NotebookVisualization implements Model {
     id: Int,
-    token: ID
+    token: ID,
+
+    _links: JSON,
+    _embedded: JSON
   }
 
   type Query {
@@ -344,18 +384,9 @@ async function getAccount(_parent: any, args: any, _context: any, info: GraphQLR
   console.log(url);
   let response = await get(url);
   let val = await response.json() as Account;
-  console.log(val._embedded);
-
   console.timeEnd("Get Account");
   return {
-    name: val.name,
-    token: val.token,
-    id: val.id,
-    user: val.user,
-    username: val.username,
-    plan_code: val.plan_code,
-    avatar: val.avatar,
-
+    ...val,
     data_sources: getEmbedArray(val, 'data_sources'),
     all_color_palettes: getEmbedArray(val, 'all_color_palettes'),
     preference: getEmbedValue(val, 'preference')
