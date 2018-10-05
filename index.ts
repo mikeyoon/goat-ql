@@ -189,6 +189,28 @@ const typeDefs = gql`
     python_visualizations: [NotebookVisualization],
     last_run: ReportRun,
     owner: Account,
+    report_filters: [ReportFilter]
+
+    _links: JSON,
+    _embedded: JSON
+  }
+
+  type ReportFilter implements Model {
+    id: Int,
+    token: ID,
+
+    control_type: String,
+    created_at: String,
+    data_type: String,
+    filter_type: String,
+    formula: String,
+    formula_type: String
+    name: String,
+    options: JSON,
+    report_id: Int
+    row_order: Int
+    updated_at: String,
+    variable_type: String,
 
     _links: JSON,
     _embedded: JSON
@@ -248,7 +270,8 @@ const resolvers = {
     report_theme: getEmbedValueResolver,
     queries: getEmbedValueResolver,
     owner: getEmbedValueResolver,
-    last_run: getReportRunResolver
+    last_run: getReportRunResolver,
+    report_filters: getEmbedValueResolver
   },
   ReportRun: {
     report: getEmbedValueResolver,
@@ -348,6 +371,9 @@ async function getReport(_parent: any, args: any, _context: any, info: GraphQLRe
           break;
         case 'space':
           embeds.push('embed[space]');
+          break;
+        case 'report_filters':
+          embeds.push('embed[report_filters]');
           break;
       }
     }
