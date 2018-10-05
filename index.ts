@@ -341,8 +341,21 @@ async function StartServer() {
 
   const app = new Hapi.Server({
     port: 4000,
-    routes: { cors: true }
+    routes: {
+      cors: {
+        origin: ['*']
+      }
+    }
   });
+
+  app.route({
+    method: 'OPTIONS',
+    path: '/graphql',
+    handler: (_request, reply) => {
+      reply.response({ ok: true })
+        .header('Access-Control-Allow-Methods', 'POST')
+    }
+  })
 
   await server.applyMiddleware({
     app,
