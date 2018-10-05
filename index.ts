@@ -1,5 +1,6 @@
-import * as Hapi from "hapi";
-import { ApolloServer, gql } from 'apollo-server-hapi';
+import express from 'express';
+import cors from 'cors';
+import { ApolloServer, gql } from 'apollo-server-express';
 
 import { performance } from 'perf_hooks';
 
@@ -336,34 +337,43 @@ function getEmbedArray(resource: ModeResource, name: string) {
   return [];
 }
 
-async function StartServer() {
-  const server = new ApolloServer({ typeDefs, resolvers });
+const server = new ApolloServer({ typeDefs, resolvers });
+const app = express();
+app.use(cors());
+server.applyMiddleware({ app });
 
-  const app = new Hapi.Server({
-    port: 4000,
-    routes: {
-      cors: {
-        origin: ['*']
-      }
-    }
-  });
+app.listen({ port: 4000 }, () =>
+  console.log(`🚀 Server ready at http://localhost:4000${server.graphqlPath}`),
+);
 
-  app.route({
-    method: 'OPTIONS',
-    path: '/graphql',
-    handler: (_request, reply) => {
-      reply.response({ ok: true })
-        .header('Access-Control-Allow-Methods', 'POST')
-    }
-  })
+// async function StartServer() {
+//   const server = new ApolloServer({ typeDefs, resolvers });
 
-  await server.applyMiddleware({
-    app,
-  });
+//   const app = new Hapi.Server({
+//     port: 4000,
+//     routes: {
+//       cors: {
+//         origin: ['*']
+//       }
+//     }
+//   });
 
-  await server.installSubscriptionHandlers(app.listener);
+//   await server.applyMiddleware({
+//     app,
+//   });
 
-  await app.start();
-}
+//   await server.installSubscriptionHandlers(app.listener);
 
-StartServer().catch(error => console.log(error));
+//   app.route({
+//     method: 'OPTIONS',
+//     path: '/graphql',
+//     handler: (_request, reply) => {
+//       reply.response({ ok: true })
+//         .header('Access-Control-Allow-Methods', 'POST')
+//     }
+//   })
+
+//   await app.start();
+// }
+
+// StartServer().catch(error => console.log(error));
