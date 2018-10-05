@@ -496,7 +496,9 @@ function getEmbedArray(resource: ModeResource, name: string) {
 
 const server = new ApolloServer({ typeDefs, resolvers });
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: ['*']
+}));
 server.applyMiddleware({ app });
 
 app.listen({ port: 4000 }, () =>
